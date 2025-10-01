@@ -9,6 +9,7 @@ import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
+import com.pest_control_mobile.NativeImageProcessor
 
 class MainApplication : Application(), ReactApplication {
 
@@ -33,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    NativeImageProcessor.initAssetManager(assets)
     loadReactNative(this)
   }
 }

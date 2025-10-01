@@ -105,11 +105,24 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+    externalNativeBuild {
+        cmake {
+            path "src/main/jni/CMakeLists.txt"
+        }
+    }
+    buildFeatures {
+        // This enables the Prefab system
+        prefab true
+    }
 }
 
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // implementation project(':react-native-vision-camera')
+    // implementation("com.microsoft.onnxruntime:onnxruntime-android:latest.integration@aar")
+    // implementation("com.microsoft.onnxruntime:onnxruntime:1.22.0")
+    // implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
