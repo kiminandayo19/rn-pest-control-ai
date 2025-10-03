@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import {
   Camera,
+  Frame,
   useCameraDevice,
   useSkiaFrameProcessor,
 } from 'react-native-vision-camera';
@@ -8,6 +9,7 @@ import CustomButton from './Button';
 import { Dispatch, SetStateAction } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 import { PaintStyle, Skia } from '@shopify/react-native-skia';
+import { runOnJS } from 'react-native-worklets';
 
 type CameraViewProps = {
   isActive: boolean;
@@ -19,6 +21,7 @@ const CameraView = ({ isActive, onPress }: Readonly<CameraViewProps>) => {
 
   const lastProcessed = useSharedValue(0);
   const detections = useSharedValue([]);
+  const isProcessing = useSharedValue(false);
 
   const paint = Skia.Paint();
   paint.setColor(Skia.Color('red'));
@@ -29,43 +32,44 @@ const CameraView = ({ isActive, onPress }: Readonly<CameraViewProps>) => {
     'worklet';
 
     if (frame.pixelFormat !== 'rgb') return;
+
+    // Render frame first
     frame.render();
-
-    // Throttle detection
-    const currentTime = Date.now();
-    const interval = 300;
-
-    if (currentTime - lastProcessed.value >= interval) {
-      lastProcessed.value = currentTime;
-      const result = cppPlugin(frame) as any;
-      detections.value = result;
-    }
 
     const dets = detections.value;
     if (dets && dets.length > 0) {
-      const frameWidth = frame.width;
-      const frameHeight = frame.height;
+      const scaleX = frame.width / 640;
+      const scaleY = frame.height / 640;
 
-      const modelWidth = 640;
-      const modelHeight = 640;
-
-      const scaleX = frameWidth / modelWidth;
-      const scaleY = frameHeight / modelHeight;
-
-      const len = dets.length;
-      for (let i = 0; i < len; i++) {
+      for (let i = 0; i < dets.length; i++) {
         const d = dets[i] as any;
 
-        const x = d.x * scaleX;
-        const y = d.y * scaleY;
-        const width = d.width * scaleX;
-        const height = d.height * scaleY;
+        const scaledX = d.x * scaleX;
+        const scaledY = d.y * scaleY;
+        const scaledWidth = d.width * scaleX;
+        const scaledHeight = d.height * scaleY;
 
         frame.drawRect(
-          Skia.XYWHRect(x - width / 2, y - height / 2, width, height),
+          Skia.XYWHRect(
+            scaledX - scaledWidth * 0.5,
+            scaledY - scaledHeight * 0.5,
+            scaledWidth,
+            scaledHeight,
+          ),
           paint,
         );
       }
+    }
+
+    // Only process if not already processing
+    const currentTime = Date.now();
+    if (currentTime - lastProcessed.value >= 500 && !isProcessing.value) {
+      lastProcessed.value = currentTime;
+      isProcessing.value = true;
+
+      const result = cppPlugin(frame);
+      detections.value = result;
+      isProcessing.value = false;
     }
   }, []);
 
